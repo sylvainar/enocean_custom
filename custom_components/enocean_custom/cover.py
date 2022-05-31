@@ -18,6 +18,7 @@ from enocean.protocol.constants import RORG
 from .const import DATA_ENOCEAN, ENOCEAN_DONGLE
 from .device import EnOceanEntity
 
+CONF_SENDER_ID = "sender_id"
 CONF_RORG = "rorg"
 CONF_RORG_FUNC = "rorg_func"
 CONF_RORG_TYPE = "rorg_type"
@@ -28,6 +29,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
         vol.Required(CONF_ID): vol.All(cv.ensure_list, [vol.Coerce(int)]),
         vol.Optional(CONF_NAME, default=DEFAULT_NAME): cv.string,
+        vol.Optional(CONF_SENDER_ID): vol.All(cv.ensure_list, [vol.Coerce(int)]),
         vol.Optional(CONF_RORG, default=RORG.VLD): cv.positive_int,
         vol.Optional(CONF_RORG_FUNC, default=0x05): cv.positive_int,
         vol.Optional(CONF_RORG_TYPE, default=0x00): cv.positive_int
@@ -41,11 +43,12 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the EnOcean cover platform."""
     dev_id = config.get(CONF_ID)
     dev_name = config.get(CONF_NAME)
+    sender_id = config.get(CONF_SENDER_ID)
     rorg = config.get(CONF_RORG)
     rorg_func = config.get(CONF_RORG_FUNC)
     rorg_type = config.get(CONF_RORG_TYPE)
 
-    add_entities([EnOceanCover(rorg, rorg_func, rorg_type, dev_id, dev_name)])
+    add_entities([EnOceanCover(sender_id, rorg, rorg_func, rorg_type, dev_id, dev_name)])
 
 async def async_setup_entry(hass, config_entry, async_add_entities) -> None:
     return True
@@ -54,9 +57,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities) -> None:
 class EnOceanCover(EnOceanEntity, CoverEntity):
     """Representation of an EnOcean switch device."""
 
-    def __init__(self, rorg, rorg_func, rorg_type, dev_id, dev_name):
+    def __init__(self, sender_id, rorg, rorg_func, rorg_type, dev_id, dev_name):
         """Initialize the EnOcean switch device."""
         super().__init__(dev_id, dev_name)
+        self._sender_id = sender_id
         self._rorg = rorg
         self._rorg_func = rorg_func
         self._rorg_type = rorg_type
@@ -111,6 +115,8 @@ class EnOceanCover(EnOceanEntity, CoverEntity):
 
     @property
     def sender_id(self):
+        if self._sender_id != None:
+            return self._sender_id
         return self.hass.data[DATA_ENOCEAN][ENOCEAN_DONGLE].base_id
 
     def open_cover(self, **kwargs):
